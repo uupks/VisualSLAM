@@ -1,0 +1,7 @@
+books
+papers
+*.pdf
+*.mp4
+build
+install
+.vscode
