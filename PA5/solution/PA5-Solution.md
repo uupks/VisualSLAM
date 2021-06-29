@@ -102,6 +102,6 @@ estimated pose:
 ---
 ### [ICP](../code/icp_align.cpp)
 
-   |Before|After|
-   |:---:|:---:|
-   |![unaligned](./unaligned.png)|![aligned](./aligned.png)
+|               Before               |           After           |
+| :--------------------------------: | :-----------------------: |
+| ![unaligned](./unaligned.png) | ![aligned](./aligned.png) |
