@@ -7,3 +7,5 @@
 [PA3](./PA3/solution/PA3-Solution.md)
 
 [PA4](./PA4/solution/PA4-Solution.md)
+
+[PA5](./PA5/solution/PA5-Solution.md)
