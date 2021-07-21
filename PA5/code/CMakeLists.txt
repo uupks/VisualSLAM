@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 project(PA5)
 
-find_package(OpenCV 3.0 REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
 find_package(Pangolin REQUIRED)
