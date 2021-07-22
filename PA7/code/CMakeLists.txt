@@ -13,5 +13,5 @@ add_executable(directBA
 )
 
 target_link_libraries(directBA
-    PUBLIC ${OpenCV_LIBRARIES} Eigen3::Eigen Sophus::Sophus pangolin g2o::core g2o::stuff
+    PUBLIC ${OpenCV_LIBRARIES} Eigen3::Eigen Sophus::Sophus pangolin g2o::core g2o::solver_dense g2o::types_slam3d
 )

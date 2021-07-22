@@ -3,7 +3,8 @@
 // this program shows how to perform direct bundle adjustment
 //
 #include <iostream>
-
+#include <unistd.h>
+#include <thread>
 using namespace std;
 
 #include <g2o/core/base_unary_edge.h>
@@ -87,7 +88,25 @@ public:
 
     virtual void computeError() override {
         // TODO START YOUR CODE HERE
-        // compute projection error ...
+        const g2o::VertexPointXYZ* v_pw = static_cast<const g2o::VertexPointXYZ*>(vertex(0));
+        const VertexSophus* T_cw = static_cast<const VertexSophus*>(vertex(1));
+        Eigen::Vector3d p_c = T_cw->estimate() * v_pw->estimate();
+        float x = p_c.x() / p_c.z() * fx + cx;
+        float y = p_c.y() / p_c.z() * fy + cy;
+        // std::cout<<"x : "<<x<<" y : "<<y<<std::endl;
+        if ((x - 3) < 0 || (x + 2) > targetImg.cols || 
+                (y - 3) < 0 || (y + 2) > targetImg.rows) {
+            
+            _error(0, 0) = 0.0;
+            this->setLevel(1);
+        } else {
+            for (size_t u = -2; u < 2; u++) {
+                for (size_t v = -2; v < 2; v++) {
+                    int num = 4 * v + u + 10;
+                    _error[num] = origColor[num] - GetPixelValue(targetImg, x + u, y + v);
+                }
+            }
+        }
         // END YOUR CODE HERE
     }
 
@@ -103,7 +122,7 @@ private:
 };
 
 // plot the poses and points for you, need pangolin
-void Draw(const VecSE3 &poses, const VecVec3d &points);
+void Draw(const VecSE3 &poses, const VecVec3d &points, std::string window_name);
 
 int main(int argc, char **argv) {
 
@@ -147,7 +166,8 @@ int main(int argc, char **argv) {
     // read images
     vector<cv::Mat> images;
     for (int i = 0; i < 7; i++) {
-        std::string img_name = std::to_string(i) + ".png";
+        std::string img_name = "../" + std::to_string(i) + ".png";
+        std::cout<<"Image Name : "<<img_name<<std::endl;
         images.push_back(cv::imread(img_name, 0));
     }
     // build optimization problem
@@ -162,43 +182,78 @@ int main(int argc, char **argv) {
 
     // TODO add vertices, edges into the graph optimizer
     // START YOUR CODE HERE
+
     for (size_t i = 0; i < poses.size(); i++) {
         VertexSophus *v = new VertexSophus();
         v->setEstimate(poses[i]);
         v->setId(i);
         optimizer.addVertex(v);
     }
-    
-    for (size_t i = 0; i < points.size(); i++) {
-        
-    }
-    
-    // END YOUR CODE HERE
 
+    for (size_t i = 0; i < points.size(); i++) {
+        g2o::VertexPointXYZ *vertex_p = new g2o::VertexPointXYZ();
+        vertex_p->setId(i + poses.size());
+        vertex_p->setEstimate(points[i]);
+        vertex_p->setMarginalized(true);
+        optimizer.addVertex(vertex_p);
+    }
+
+    for (size_t i = 0; i < poses.size(); i++) {
+        for (size_t j = 0; j < points.size(); j++) {
+            EdgeDirectProjection *edge = new EdgeDirectProjection(color[j], images[i]);
+            // edge->setId(j);
+            edge->setVertex(0, dynamic_cast<g2o::VertexPointXYZ*>(optimizer.vertex(j + poses.size())));
+            edge->setVertex(1, dynamic_cast<VertexSophus*>(optimizer.vertex(i)));
+            edge->setInformation(Eigen::Matrix<double, 16, 16>::Identity());
+
+            g2o::RobustKernelHuber* huber_kernel = new g2o::RobustKernelHuber();
+            huber_kernel->setDelta(1.0);
+            edge->setRobustKernel(huber_kernel);
+            optimizer.addEdge(edge);
+        }
+    }
+    // END YOUR CODE HERE
     // perform optimization
     optimizer.initializeOptimization(0);
     optimizer.optimize(200);
 
     // TODO fetch data from the optimizer
     // START YOUR CODE HERE
+    VecSE3 optimized_poses;
+    VecVec3d optimzed_points;
+    optimized_poses.resize(poses.size());
+    optimzed_points.resize(points.size());
+    for (size_t i = 0; i < poses.size(); i++) {
+        Sophus::SE3d T_cw = dynamic_cast<VertexSophus*>(optimizer.vertex(i))->estimate();
+        optimized_poses[i] = T_cw;
+    }
+    for (size_t i = 0; i < points.size(); i++) {
+        Eigen::Vector3d p_w = dynamic_cast<g2o::VertexPointXYZ *>(optimizer.vertex(i + poses.size()))->estimate();
+        optimzed_points[i] = p_w;
+    }
     // END YOUR CODE HERE
 
     // plot the optimized points and poses
-    Draw(poses, points);
+    // std::thread th1(&Draw, poses, points, "trajectory viewer");
+    // std::thread th2(&Draw, optimized_poses, optimzed_points, "optimized trajectory viewer");
+    Draw(poses, points, "trajectory viewer");
+    // Draw(poses, points, "optimized trajectory viewer");
+    // th1.join();
+    // th2.join();
 
     // delete color data
     for (auto &c: color) delete[] c;
     return 0;
 }
 
-void Draw(const VecSE3 &poses, const VecVec3d &points) {
+void Draw(const VecSE3 &poses, const VecVec3d &points, std::string window_name) {
     if (poses.empty() || points.empty()) {
         cerr << "parameter is empty!" << endl;
         return;
     }
 
     // create pangolin window and plot the trajectory
-    pangolin::CreateWindowAndBind("Trajectory Viewer", 1024, 768);
+    pangolin::CreateWindowAndBind(window_name, 1024, 768);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
