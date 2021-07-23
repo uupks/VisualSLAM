@@ -93,16 +93,14 @@ public:
         Eigen::Vector3d p_c = T_cw->estimate() * v_pw->estimate();
         float x = p_c.x() / p_c.z() * fx + cx;
         float y = p_c.y() / p_c.z() * fy + cy;
-        // std::cout<<"x : "<<x<<" y : "<<y<<std::endl;
         if ((x - 3) < 0 || (x + 2) > targetImg.cols || 
                 (y - 3) < 0 || (y + 2) > targetImg.rows) {
-            
             _error(0, 0) = 0.0;
             this->setLevel(1);
-        } else {
-            for (size_t u = -2; u < 2; u++) {
-                for (size_t v = -2; v < 2; v++) {
-                    int num = 4 * v + u + 10;
+        } else {            
+            for (int u = -2; u < 2; u++) {
+                for (int v = -2; v < 2; v++) {
+                    int num = 4 * u + v + 10;
                     _error[num] = origColor[num] - GetPixelValue(targetImg, x + u, y + v);
                 }
             }
@@ -232,14 +230,20 @@ int main(int argc, char **argv) {
         optimzed_points[i] = p_w;
     }
     // END YOUR CODE HERE
-
+    // auto points_error = 
+    Eigen::Vector3d points_error;
+    for (size_t i = 0; i < points.size(); i++) {
+        points_error += optimzed_points[i] - points[i];
+    }
+    std::cout<<"point error : "<<points_error<<std::endl;
+    
     // plot the optimized points and poses
-    // std::thread th1(&Draw, poses, points, "trajectory viewer");
-    // std::thread th2(&Draw, optimized_poses, optimzed_points, "optimized trajectory viewer");
-    Draw(poses, points, "trajectory viewer");
+    std::thread th1(&Draw, poses, points, "trajectory viewer");
+    std::thread th2(&Draw, optimized_poses, optimzed_points, "optimized trajectory viewer");
+    // Draw(poses, points, "trajectory viewer");
     // Draw(poses, points, "optimized trajectory viewer");
-    // th1.join();
-    // th2.join();
+    th1.join();
+    th2.join();
 
     // delete color data
     for (auto &c: color) delete[] c;
