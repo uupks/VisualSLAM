@@ -11,3 +11,5 @@
 [PA5](./PA5/solution/PA5-Solution.md)
 
 [PA6](./PA6/solution/PA6-solution.md)
+
+[PA7](./PA7/solution/PA7-Solution.md)
